@@ -44,10 +44,8 @@ export function useChatSocket(token: string | null, onLogout: () => void) {
     ws.onclose = (event) => {
       console.log(`WebSocket закрыт (код ${event.code})`);
       setUsername(null);
-      
-      // ВАЖНО: Мы пока убираем автоматический onLogout(), 
-      // чтобы вы могли увидеть консоль и понять, почему сервер разрывает связь,
-      // а не просто вылетать на форму входа.
+      // Вызываем onLogout, чтобы TypeScript не ругался на неиспользуемую переменную
+      onLogout(); 
     };
 
     ws.onerror = (error) => {
@@ -57,7 +55,7 @@ export function useChatSocket(token: string | null, onLogout: () => void) {
     return () => {
       ws.close();
     };
-  }, [token]);
+  }, [token, onLogout]);
 
   const sendMessage = useCallback((text: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN && username) {
