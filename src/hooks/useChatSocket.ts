@@ -15,26 +15,29 @@ export function useChatSocket(token: string | null, onLogout: () => void) {
 
     ws.onopen = () => {
       console.log("WebSocket соединен! Отправляем токен...");
-      // Отправляем токен строго по формату из задания
-      const authMessage = {
+      // Отправляем токен строго как строку, как требует бекенд
+      ws.send(JSON.stringify({
         type: 'AUTH',
         payload: {
-          token: token
+          token: String(token)
         }
-      };
-      ws.send(JSON.stringify(authMessage));
+      }));
     };
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as WsServerMessage;
+        const data = JSON.parse(event.data);
         console.log("Получено сообщение от WS:", data);
         
         if (data.type === 'AUTH_SUCCESS') {
-          // Если сервер ответил AUTH_SUCCESS — мы в чате!
+          // Если сервер ответил AUTH_SUCCESS — мы в чате
           setUsername(data.payload.username);
         } else if (data.type === 'NEW_MESSAGE') {
           setMessages(prev => [...prev, data.payload]);
+        } else if (data.type === 'ERROR') {
+          console.error('Ошибка от сервера WS:', data.payload);
+          // Выходим из аккаунта только если сервер явно прислал ошибку токена
+          onLogout();
         }
       } catch (err) {
         console.error('Ошибка парсинга:', err);
@@ -44,8 +47,7 @@ export function useChatSocket(token: string | null, onLogout: () => void) {
     ws.onclose = (event) => {
       console.log(`WebSocket закрыт (код ${event.code})`);
       setUsername(null);
-      // Вызываем onLogout, чтобы TypeScript не ругался на неиспользуемую переменную
-      onLogout(); 
+      // Безусловный onLogout() убран, чтобы вас не выкидывало сразу при сбое сети
     };
 
     ws.onerror = (error) => {
