@@ -9,13 +9,11 @@ export function useChatSocket(token: string | null, onLogout: () => void) {
   useEffect(() => {
     if (!token) return;
 
-    // Создаем подключение
     const ws = new WebSocket('wss://inai-col3.fishrungames.com/chat/');
     socketRef.current = ws;
 
     ws.onopen = () => {
       console.log("WebSocket соединен! Отправляем токен...");
-      // Отправляем токен строго как строку, как требует бекенд
       ws.send(JSON.stringify({
         type: 'AUTH',
         payload: {
@@ -26,17 +24,16 @@ export function useChatSocket(token: string | null, onLogout: () => void) {
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        // Возвращаем приведение типа as WsServerMessage, чтобы убрать ошибку TS6196
+        const data = JSON.parse(event.data) as WsServerMessage;
         console.log("Получено сообщение от WS:", data);
         
         if (data.type === 'AUTH_SUCCESS') {
-          // Если сервер ответил AUTH_SUCCESS — мы в чате
           setUsername(data.payload.username);
         } else if (data.type === 'NEW_MESSAGE') {
           setMessages(prev => [...prev, data.payload]);
         } else if (data.type === 'ERROR') {
           console.error('Ошибка от сервера WS:', data.payload);
-          // Выходим из аккаунта только если сервер явно прислал ошибку токена
           onLogout();
         }
       } catch (err) {
@@ -47,7 +44,6 @@ export function useChatSocket(token: string | null, onLogout: () => void) {
     ws.onclose = (event) => {
       console.log(`WebSocket закрыт (код ${event.code})`);
       setUsername(null);
-      // Безусловный onLogout() убран, чтобы вас не выкидывало сразу при сбое сети
     };
 
     ws.onerror = (error) => {
